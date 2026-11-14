@@ -1,0 +1,37 @@
+name: Build Asep Mochi
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Isi API key dari GitHub Secret
+        env:
+          KEY: ${{ secrets.OR_API_KEY }}
+        run: sed -i "s|__OR_KEY__|$KEY|g" asep_mochi/asep_mochi.ino
+
+      - uses: arduino/setup-arduino-cli@v2
+
+      - name: Install board dan library
+        run: |
+          arduino-cli config init
+          arduino-cli config add board_manager.additional_urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
+          arduino-cli core update-index
+          arduino-cli core install esp32:esp32@3.0.7
+          arduino-cli lib install "Adafruit GFX Library" "Adafruit BusIO" "Adafruit ST7735 and ST7789 Library" "ArduinoJson"
+
+      - name: Compile
+        run: |
+          arduino-cli compile \
+            --fqbn "esp32:esp32:esp32s3:PSRAM=opi,FlashSize=16M,PartitionScheme=huge_app,CDCOnBoot=default" \
+            --export-binaries asep_mochi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: asep-mochi-bin
+          path: asep_mochi/build/**/*.merged.bin
